@@ -1,0 +1,10 @@
+menu "Safety Module Configuration"
+
+    config SM_FIRMWARE_VERSION
+        int "Firmware version (1=sensor test, 2=integrated, 3=protection)"
+        default 1
+        range 1 3
+        help
+            Select which main_vX file to compile.
+
+endmenu
