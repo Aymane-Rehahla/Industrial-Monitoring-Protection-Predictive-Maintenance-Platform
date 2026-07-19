@@ -1,0 +1,37 @@
+/* ============================================================
+   BASE.CSS — Reset, tokens, screen lock
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-font-smoothing: antialiased;
+}
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden; position: fixed; top: 0; left: 0;
+  background: #070D1A;
+  font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+  color: #fff; user-select: none;
+}
+:root {
+  --bg-deep:    #070D1A;
+  --bg-sidebar: #0C1524;
+  --bg-card:    #0F1C2E;
+  --bg-inner:   #0A1520;
+  --border:     rgba(255,255,255,0.08);
+  --border2:    rgba(255,255,255,0.09);
+  --green:  #34D058;
+  --yellow: #F5C518;
+  --red:    #FF453A;
+  --blue:   #4F7EF7;
+  --text:   #FFFFFF;
+  --text2:  rgba(255,255,255,0.45);
+  --text3:  rgba(255,255,255,0.22);
+  --nav-active: #1A2E48;
+  --nav-bar:    #4F7EF7;
+  --sidebar-w:  238px;
+}
+@keyframes pageIn  { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes fadeIn  { from{opacity:0} to{opacity:1} }
