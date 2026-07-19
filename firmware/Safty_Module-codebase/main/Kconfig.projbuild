@@ -1,0 +1,18 @@
+menu "Safety Module Configuration"
+
+    config SAFETY_MODULE_ROLE
+        int "Device role (0=auto, 1=primary, 2=secondary)"
+        default 0
+        range 0 2
+        help
+            0 = Auto-detect based on LCD presence.
+            1 = Force primary (has LCD).
+            2 = Force secondary (no LCD).
+
+    config SAFETY_MODULE_DEBUG
+        bool "Enable debug serial output"
+        default y
+        help
+            Print sensor readings and state changes to USB serial.
+
+endmenu
