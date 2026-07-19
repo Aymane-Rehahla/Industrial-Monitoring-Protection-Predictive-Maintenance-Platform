@@ -1,306 +1,301 @@
-# Industrial Distributed Monitoring & Protection Platform
+# Industrial Monitoring & Protection Platform
+### Safety-Critical Embedded System for Three-Phase Industrial Equipment
 
-> A modular industrial monitoring and protection system built with ESP32-S3 and ESP32 using ESP-IDF.
->
-> Designed for reliability, fault tolerance, and safety-critical industrial environments.
+> ESP32-S3 • ESP32 • ESP-IDF • Embedded C • Industrial Electronics • Functional Safety • Remote Monitoring
 
 ---
 
 ## Overview
 
-This project is my graduation project and represents the largest embedded system I have designed.
+This project is my graduation project and represents the largest embedded system I have developed.
 
-The system monitors industrial electrical and environmental parameters in real time while protecting equipment through a layered safety architecture.
+The goal was not simply to read sensors, but to design a **fault-tolerant industrial protection platform** capable of monitoring electrical and environmental conditions while remaining safe even if software or hardware partially fails.
 
-Unlike many academic projects, this system was designed with **industrial reliability** as the primary goal.
+The system combines multiple microcontrollers, redundant supervision, hardware watchdogs, modular sensor architecture, remote monitoring, and industrial protection logic.
 
-It combines:
+Unlike many academic projects, this system was designed from an engineering perspective:
 
-- Dual ESP32 architecture
-- Independent hardware watchdogs
-- Redundant communication
-- Modular sensor framework
-- Industrial HMI
-- Remote monitoring dashboard
-- Real-time protection algorithms
+> **Never trust software alone. Every critical decision must be independently verified.**
 
 ---
 
-# Architecture
+# System Architecture
 
 ```
-                   iPad Dashboard
-                  (Web Application)
-                         │
-                    WiFi / TCP
-                         │
-                 ESP32 HMI Gateway
-                         │
-                  Encrypted ESP-NOW
-                         │
-      ┌──────────────────┴──────────────────┐
-      │                                     │
- ESP32-S3 Safety Node A           ESP32-S3 Safety Node B
-      │                                     │
-      └────────── Cross Validation ─────────┘
-                     │
-              Dual ATtiny85 Watchdogs
-                     │
-               Independent NE555 Watchdog
-                     │
-               Industrial Safety Relay
+                     ┌───────────────────────┐
+                     │      iPad HMI         │
+                     │ Web Dashboard         │
+                     │ Remote Monitoring     │
+                     └──────────┬────────────┘
+                                │
+                           WiFi / TCP
+                                │
+                     ┌──────────▼───────────┐
+                     │      ESP32 Gateway    │
+                     │ Communication Bridge  │
+                     │ Web Server            │
+                     │ ESP-NOW               │
+                     └──────────┬────────────┘
+                                │
+                          ESP-NOW Network
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                   │
+      ESP32-S3 Node A                     ESP32-S3 Node B
+      Industrial Protection               Industrial Protection
+              │                                   │
+              └──────────────┬────────────────────┘
+                             │
+                   Dual ATtiny85 Watchdogs
+                             │
+                          NE555 Supervisor
+                             │
+                    Safety Relay / Contactor
 ```
 
 ---
 
-# Key Features
+# Main Features
 
-## Industrial Protection
-
-- Three-phase voltage monitoring
-- Three-phase current monitoring
-- Temperature monitoring
-- Humidity monitoring
-- Gas detection
-- RPM monitoring
-- Vibration monitoring
-- Relay feedback verification
-- Fault logging
-- Alarm management
+- Three-phase electrical monitoring
+- Industrial protection system
+- Modular sensor architecture
+- Remote web dashboard
+- ESP-NOW communication
+- Configurable protection thresholds
+- Dual-node redundancy
+- Multi-layer watchdog architecture
+- Event logging
+- Expandable hardware design
 
 ---
 
-## Real-Time Processing
+# Engineering Problems Solved
 
-The ESP32-S3 performs all protection-critical calculations:
+## 1. Software can fail
 
-- RMS calculation
-- Phase sequence detection
-- Phase loss detection
+A normal embedded project assumes the firmware is always running correctly.
+
+I assumed the opposite.
+
+The protection system was designed so that **hardware can still force the system into a safe state even if firmware crashes or behaves unexpectedly.**
+
+---
+
+## 2. Multi-Layer Safety Supervision
+
+Instead of relying on a single watchdog timer, I designed multiple independent protection layers.
+
+### Layer 1 — ESP32 Cross Monitoring
+
+Two ESP32 controllers continuously monitor each other's state.
+
+If one controller detects abnormal behavior from the other, it refuses unsafe operation.
+
+---
+
+### Layer 2 — ATtiny85 Hardware Watchdogs
+
+Each ESP32 communicates with an independent ATtiny85.
+
+Instead of sending a fixed heartbeat, the ESP32 continuously transmits a **rolling key**.
+
+The watchdog validates the changing sequence.
+
+This prevents situations where:
+
+- firmware freezes
+- communication glitches
+- repeated heartbeat values
+- partially corrupted execution
+
+A frozen processor cannot fake a valid rolling key.
+
+---
+
+### Layer 3 — Independent NE555 Supervisor
+
+The final safety layer contains no firmware at all.
+
+A simple NE555 timer expects periodic pulses.
+
+If every controller fails to generate the required pulse:
+
+- relay power is removed
+- contactor opens
+- processors are reset
+
+This guarantees a safe fallback even during catastrophic firmware failure.
+
+---
+
+# Contactor Verification
+
+One lesson I learned during my industrial internship was:
+
+> Never assume a contactor actually changed state.
+
+To verify operation, I placed:
+
+- three voltage sensors before the contactor
+- three voltage sensors after the contactor
+
+The firmware compares both measurements.
+
+This allows detection of:
+
+- welded contacts
+- contactor failing to close
+- contactor failing to open
+- unexpected phase behavior
+
+Instead of trusting the relay command, the system verifies the physical electrical result.
+
+---
+
+# Electrical Measurements
+
+The system monitors:
+
+- Three-phase voltage
+- Three-phase current
+- Frequency
+- Phase sequence
+- Phase loss
 - Voltage imbalance
 - Current imbalance
-- Frequency measurement
-- Locked rotor detection
-- Thermal I²t model
-- Shock detection
-- Safety trips
 
-If a condition can damage equipment...
+Environmental sensors include:
 
-**the ESP32 reacts immediately.**
+- Temperature
+- Humidity
+- Gas detection
+- Vibration
+- RPM
 
 ---
 
-## Remote Monitoring
+# ADC Sampling Challenge
 
-The ESP32 Gateway serves a web application accessible from an iPad or any browser.
+One practical engineering challenge involved the ADC sampling rate.
 
-Features include
+The available ADC bandwidth was insufficient to continuously sample every phase independently at full resolution.
 
-- Live dashboard
-- Real-time sensor values
-- Alarm history
-- Historical trends
-- Waveform visualization
-- FFT analysis
-- Configuration interface
-- Maintenance analytics
+Instead of accepting reduced accuracy, I designed a sampling strategy that reconstructs each phase waveform while distributing the available samples across all three phases.
+
+This allows simultaneous monitoring of the complete electrical system using limited ADC resources.
+
+---
+
+# Flexible Industrial Configuration
+
+Industrial installations are not identical.
+
+To support multiple environments, the firmware allows:
+
+- Three-phase configuration
+- Three-phase + Neutral configuration
+- Configurable sensor limits
+- Modular sensor enable/disable
+- Expandable hardware drivers
+
+Adding or removing sensors requires minimal software modification.
 
 ---
 
 # Safety Philosophy
 
-The most important design goal was **eliminating single points of failure.**
+The project follows one simple rule:
 
-Every protection layer assumes another layer may eventually fail.
+> **Never trust a single source of information.**
 
-## Layer 1 — Software
+Critical decisions are verified using:
 
-Industrial state machines
+- redundant controllers
+- redundant watchdogs
+- electrical feedback
+- independent hardware supervision
 
-Fault handling
-
-CRC validation
-
-Communication verification
-
-Configuration validation
-
----
-
-## Layer 2 — Dual ESP32 Supervision
-
-Two ESP32 controllers continuously supervise each other.
-
-Each verifies
-
-- communication integrity
-- sensor validity
-- heartbeat
-- operating state
-
-If disagreement occurs
-
-the system enters a safe state.
-
----
-
-## Layer 3 — Intelligent Hardware Watchdogs
-
-Two ATtiny85 microcontrollers independently supervise the ESP32 controllers.
-
-Instead of accepting a simple heartbeat,
-
-the watchdog expects a **rolling authentication key**.
-
-This prevents situations where a crashed processor repeatedly outputs the same pulse.
-
-If the rolling key becomes invalid,
-
-the watchdog assumes the firmware is malfunctioning and removes the safety relay.
-
----
-
-## Layer 4 — Independent NE555 Emergency Watchdog
-
-Even watchdogs can fail.
-
-To eliminate this possibility, an entirely independent NE555 hardware watchdog was added.
-
-Unlike the programmable watchdogs,
-
-the NE555 requires no firmware.
-
-If every controller becomes unresponsive and no valid heartbeat reaches the timer,
-
-the NE555 automatically
-
-- opens the safety contactor
-- resets the processors
-- forces the system into a safe state
-
-This final layer is completely hardware-based and cannot be affected by firmware bugs.
-
----
-
-# Modular Sensor Architecture
-
-One design objective was allowing industrial installations to evolve without modifying firmware.
-
-Sensors are treated as independent modules.
-
-Each module can
-
-- be added
-- removed
-- enabled
-- disabled
-- configured
-
-independently.
-
-Protection limits are configurable rather than hardcoded.
-
-This allows the same firmware to support multiple industrial installations with different requirements.
-
----
-
-# Communication
-
-## ESP-NOW
-
-- encrypted transport
-- CRC validation
-- packet sequencing
-- custom protocol
-- low latency
-
----
-
-## Gateway
-
-The ESP32 gateway converts embedded telemetry into data suitable for the web dashboard.
+Every protection layer assumes another layer may fail.
 
 ---
 
 # Technologies
 
+## Firmware
+
 - ESP-IDF
-- C
+- Embedded C
 - FreeRTOS
-- ESP32-S3
-- ESP32
 - ESP-NOW
-- TCP/IP
-- HTML
-- JavaScript
-- I2C
-- UART
-- SPI
+- WiFi
+
+## Hardware
+
+- ESP32-S3
+- ESP32-WROOM
 - ADS1115
-- SHT45
 - ATtiny85
+- NE555
+- Relay feedback circuitry
+- Modular sensor interfaces
 
 ---
 
-# Project Highlights
+# Lessons Learned
 
-✔ Custom communication protocol
+Developing this project taught me considerably more than programming microcontrollers.
 
-✔ Distributed embedded architecture
+It required understanding:
 
-✔ Modular driver framework
+- industrial safety principles
+- fault tolerance
+- hardware/software co-design
+- communication reliability
+- embedded architecture
+- measurement systems
+- redundancy
+- practical engineering trade-offs
 
-✔ Industrial HMI
-
-✔ Browser-based dashboard
-
-✔ Hardware redundancy
-
-✔ Layered watchdog system
-
-✔ Safety relay verification
-
-✔ Real-time monitoring
-
-✔ Fault logging
-
-✔ Configurable protection system
+Many design decisions were inspired by observations made during my internship at a combined-cycle power plant, where verification and fail-safe operation are more important than simply making a system work.
 
 ---
 
 # Current Status
 
-The platform is fully operational and demonstrates
+The platform is functional and continues to evolve.
 
-- embedded firmware
-- hardware integration
-- communication
-- industrial HMI
-- remote monitoring
+Planned improvements include:
 
-Some advanced algorithms are still under active development as the project continues to evolve.
-
----
-
-# Future Work
-
-- Advanced predictive diagnostics
-- PLC integration (Modbus TCP)
-- CAN Bus support
-- MQTT gateway
-- Cloud analytics
-- Machine learning maintenance assistant
+- complete protection algorithms
+- advanced diagnostics
+- additional industrial communication protocols
+- hardware validation
+- extended testing
 
 ---
 
 # About Me
 
-I'm an Industrial Electronics Engineer from Algeria passionate about
+I'm an Industrial Electronics graduate from Algeria interested in:
 
-- Embedded Systems
-- Firmware Development
+- Embedded Software
+- Firmware Engineering
 - Industrial Automation
-- Safety-Critical Software
+- Safety-Critical Systems
+- Electronics Design
+- Test Engineering
 
-I'm currently seeking Embedded Software, Firmware, Electronics and Industrial Automation opportunities with visa sponsorship.
+I'm currently looking for opportunities involving **embedded systems and industrial automation**, including positions offering **visa sponsorship**.
+
+---
+
+## Contact
+
+📧 Aymen.rehahla007@gmail.com
+
+LinkedIn:
+https://www.linkedin.com/in/aymen-rehahla-907391335/
+
+GitHub:
+https://github.com/Aymane-Rehahla
